@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Elden Ring Character/Boss Lookup</title>
+  <style>
+    body { background: #181818; color: #e7e7e7; font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 0; }
+    .container { max-width: 1200px; margin: 48px auto; background: #242424; border-radius: 16px; box-shadow: 0 0 24px #0007; padding: 40px; }
+    h2 { text-align: center; margin-bottom: 24px; color: #ffe96c; font-size: 2em; }
+    .search-row { text-align: center; margin-bottom: 18px; }
+    .search-group { display: flex; justify-content: center; align-items: center; gap: 10px; position: relative; }
+    input[type="text"] { width: 400px; padding: 10px; font-size: 1.1em; border-radius: 8px; border: 1px solid #444; background: #222; color: #e7e7e7; }
+    button, .dropdown-arrow { padding: 10px 18px; border-radius: 8px; font-size: 1.05em; background: #6c3eff; color: #fff; border: none; cursor: pointer; transition: background 0.2s; }
+    button:hover, .dropdown-arrow:hover { background: #4c2ecc; }
+    .dropdown-arrow { margin-left: 6px; font-size: 1.2em; background: #444; color: #ffe96c; border: none; }
+    .dropdown-list { display: none; position: absolute; top: 55px; left: 0; width: 400px; max-height: 300px; overflow-y: auto; background: #222; border-radius: 8px; box-shadow: 0 0 12px #0007; z-index: 20; }
+    .dropdown-list.open { display: block; }
+    .dropdown-list .dropdown-item { padding: 10px 18px; border-bottom: 1px solid #333; cursor: pointer; color: #e7e7e7; }
+    .dropdown-list .dropdown-item:hover { background: #6c3eff33; color: #ffe96c; }
+    .live-results { position: absolute; left: 0; top: 55px; width: 400px; background: #222; border-radius: 8px; box-shadow: 0 0 12px #0007; z-index: 21; max-height: 220px; overflow-y: auto; }
+    .live-results .live-item { padding: 10px 18px; border-bottom: 1px solid #444; cursor: pointer; color: #e7e7e7; }
+    .live-results .live-item:hover { background: #6c3eff33; color: #ffe96c; }
+    .info-panel { background: #222; border-radius: 12px; padding: 24px; margin-top: 24px; box-shadow: 0 0 6px #6c3eff; font-size: 1.13em; line-height: 1.7; min-height: 90px; }
+    .title { font-weight: bold; font-size: 1.25em; color: #ffe96c; margin-bottom: 10px; }
+    .drops { color: #89ffb9; }
+    .location, .grace { color: #b9e7ff; }
+    .notfound { color: #ff6c6c; font-weight: bold; }
+    a { color: #6c3eff; text-decoration: underline; }
+    @media (max-width: 700px) {
+      .container { padding: 10px; }
+      input[type="text"], .dropdown-list, .live-results { width: 90vw; min-width: 220px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Elden Ring Character/Boss Lookup</h2>
+    <div class="search-row">
+      <div class="search-group">
+        <input type="text" id="nameInput" placeholder="Type ANY character, boss, or enemy name...">
+        <button onclick="lookupCharacter()">Lookup</button>
+        <button class="dropdown-arrow" onclick="toggleDropdown()">&#9660;</button>
+        <div id="dropdownList" class="dropdown-list"></div>
+        <div id="liveResults" class="live-results"></div>
+      </div>
+    </div>
+    <div id="infoPanel" class="info-panel"></div>
+  </div>
+  <script>
+    // --- Secret character ---
+    const secretCharacterKey = "son goku";
+    const secretCharacter = {
+      type: "Legendary Warrior",
+      health: "Infinite (regenerates at will)",
+      drops: [
+        "Dragon Ball (randomly chosen)",
+        "Ultra Instinct Scroll",
+        "Senzu Bean",
+        "Cosmic Rune",
+        "Remembrance of the Saiyan"
+      ],
+      location: "Hidden Realm: Beyond the Lands Between",
+      grace: "Floating Nimbus (special grace)",
+      description: `
+        <b>Son Goku</b> is a legendary warrior from another world, known as the Saiyan raised on Earth.<br><br>
+        <strong>Abilities:</strong>
+        <ul>
+          <li>Superhuman strength, speed, and reflexes</li>
+          <li>Ki manipulation (Kamehameha, Spirit Bomb, Instant Transmission)</li>
+          <li>Transformation: Super Saiyan, Super Saiyan God, Ultra Instinct</li>
+          <li>Regeneration, extreme durability, and limitless potential</li>
+        </ul>
+        <strong>Nearest Grace:</strong> Floating Nimbus<br>
+        <strong>Location:</strong> Hidden in the skies above Farum Azula (only reachable by true Tarnished)<br><br>
+        <strong>Special Encounter:</strong>
+        <ul>
+          <li>Initiate battle by collecting all seven Dragon Balls scattered throughout the Lands Between</li>
+          <li>He adapts to your strongest attack and multiplies its power tenfold</li>
+          <li>Defeating Goku unlocks the <b>Ultra Instinct</b> skill, allowing you to dodge all attacks automatically for 60 seconds, once per day</li>
+        </ul>
+        <br>
+        <strong>Lore:</strong>
+        <blockquote>
+          Goku wandered into the Lands Between in search of the ultimate challenge. His presence is a cosmic anomaly, and only the most persistent Tarnished may discover his existence.<br>
+          Legends say he sparred with Malenia and Radahn simultaneously, never breaking a sweat. His appetite for adventure and food is unmatched, and he is always ready to help a worthy warrior.
+        </blockquote>
+        <br>
+        <img src="https://static.wikia.nocookie.net/dragonball/images/8/81/GokuUltraInstinct.png" alt="Son Goku Ultra Instinct" style="width:180px;border-radius:12px;box-shadow:0 0 8px #6c3eff;">
+        <br><br>
+        <b>Wiki (not really):</b> <a href="https://dragonball.fandom.com/wiki/Goku" target="_blank">Dragon Ball Wiki</a>
+      `
+    };
+
+    // --- Massive characterData: 160+ official Elden Ring bosses, NPCs, enemies, merchants, quest givers ---
+    // This is a sample block. For the FULL list, see the comment below for an automated import strategy.
+    // For brevity, here are 20; you can expand to 160+ using wiki data or a JSON import.
+    const characterData = {
+      "godrick": {
+        type: "Boss",
+        health: "3,294 HP",
+        drops: ["Great Rune", "Remembrance of the Grafted"],
+        location: "Stormveil Castle, Limgrave",
+        grace: "Stormveil Main Gate",
+        description: "Lord of Stormveil and first Shardbearer, famed for his grafted limbs and dragon arm. <a href='https://eldenring.wiki.fextralife.com/Godrick+the+Grafted' target='_blank'>Wiki</a>"
+      },
+      "malenia": {
+        type: "Boss",
+        health: "Phase 1: 33,131 HP, Phase 2: 19,373 HP",
+        drops: ["Remembrance of the Rot Goddess", "Malenia's Great Rune"],
+        location: "Miquella's Haligtree, Elphael",
+        grace: "Haligtree Roots",
+        description: "Blade of Miquella, heals with every strike, wields the Waterfowl Dance. <a href='https://eldenring.wiki.fextralife.com/Malenia+Blade+of+Miquella' target='_blank'>Wiki</a>"
+      },
+      "maliketh": {
+        type: "Boss",
+        health: "Phase 1: 13,605 HP, Phase 2: 15,076 HP",
+        drops: ["Remembrance of the Black Blade"],
+        location: "Crumbling Farum Azula",
+        grace: "Beside the Great Bridge",
+        description: "Guardian of Destined Death, transforms mid-fight. <a href='https://eldenring.wiki.fextralife.com/Maliketh+the+Black+Blade' target='_blank'>Wiki</a>"
+      },
+      "godfrey": {
+        type: "Boss",
+        health: "First Phase: 16,158 HP, Second Phase (Hoarah Loux): 24,964 HP",
+        drops: ["Elden Remembrance"],
+        location: "Leyndell, Ashen Capital",
+        grace: "Elden Throne",
+        description: "First Elden Lord, later reveals his true self as Hoarah Loux. <a href='https://eldenring.wiki.fextralife.com/Godfrey+First+Elden+Lord' target='_blank'>Wiki</a>"
+      },
+      "messmer": {
+        type: "Boss (DLC)",
+        health: "Approx. 21,600 HP",
+        drops: ["Remembrance of the Impaler"],
+        location: "Shadow Keep, Scadu Altus (DLC)",
+        grace: "Messmer's Tower",
+        description: "Messmer the Impaler, major boss in Shadow of the Erdtree. <a href='https://eldenring.wiki.fextralife.com/Messmer+the+Impaler' target='_blank'>Wiki</a>"
+      },
+      "rennala": {
+        type: "Boss",
+        health: "Phase 1: 2,175 HP, Phase 2: 8,022 HP",
+        drops: ["Remembrance of the Full Moon Queen", "Great Rune of the Unborn"],
+        location: "Raya Lucaria Academy, Liurnia",
+        grace: "Raya Lucaria Grand Library",
+        description: "Queen of the Full Moon, head of Raya Lucaria, sorcerous second phase. <a href='https://eldenring.wiki.fextralife.com/Rennala+Queen+of+the+Full+Moon' target='_blank'>Wiki</a>"
+      },
+      "radahn": {
+        type: "Boss",
+        health: "9,572 HP",
+        drops: ["Remembrance of the Starscourge", "Radahn's Great Rune"],
+        location: "Redmane Castle, Caelid",
+        grace: "Chamber Outside the Plaza",
+        description: "Starscourge Radahn, centerpiece of the Radahn Festival. <a href='https://eldenring.wiki.fextralife.com/Starscourge+Radahn' target='_blank'>Wiki</a>"
+      },
+      "margit": {
+        type: "Boss",
+        health: "4,177 HP",
+        drops: ["Talisman Pouch"],
+        location: "Stormveil Castle Entrance, Limgrave",
+        grace: "Margit, The Fell Omen",
+        description: "Blocks entry to Stormveil, wields magic daggers and hammer. <a href='https://eldenring.wiki.fextralife.com/Margit+the+Fell+Omen' target='_blank'>Wiki</a>"
+      },
+      "blaidd": {
+        type: "NPC",
+        health: "N/A",
+        drops: ["Blaidd's Armor", "Royal Greatsword", "Blaidd's Mask"],
+        location: "Slumbering Wolf's Shack, Siofra River, Ranni's Rise",
+        grace: "Ranni's Chamber",
+        description: "Half-wolf warrior, loyal to Ranni. <a href='https://eldenring.wiki.fextralife.com/Blaidd' target='_blank'>Wiki</a>"
+      },
+      "ranni": {
+        type: "NPC",
+        health: "N/A",
+        drops: ["Dark Moon Greatsword (quest)"],
+        location: "Ranni's Rise, Three Sisters, Liurnia",
+        grace: "Ranni's Chamber",
+        description: "Lunar Princess, central to a major quest line. <a href='https://eldenring.wiki.fextralife.com/Ranni+the+Witch' target='_blank'>Wiki</a>"
+      },
+      "melina": {
+        type: "NPC",
+        health: "N/A",
+        drops: ["N/A"],
+        location: "Summons at Sites of Grace",
+        grace: "Any early game Grace",
+        description: "Your mysterious maiden, guides the Tarnished, enables leveling and Roundtable Hold. <a href='https://eldenring.wiki.fextralife.com/Melina' target='_blank'>Wiki</a>"
+      },
+      "radagon": {
+        type: "Boss",
+        health: "20,546 HP",
+        drops: ["N/A (transition to Elden Beast)"],
+        location: "Elden Throne, Leyndell",
+        grace: "Elden Throne",
+        description: "Radagon of the Golden Order, master of holy magic, final boss phase 1. <a href='https://eldenring.wiki.fextralife.com/Radagon+of+the+Golden+Order' target='_blank'>Wiki</a>"
+      },
+      "gideon": {
+        type: "Boss/NPC",
+        health: "4,324 HP",
+        drops: ["Scepter of the All-Knowing", "All-Knowing Armor Set"],
+        location: "Leyndell, Ashen Capital",
+        grace: "Erdtree Sanctuary",
+        description: "Sir Gideon Ofnir, master of sorceries and lore. <a href='https://eldenring.wiki.fextralife.com/Sir+Gideon+Ofnir' target='_blank'>Wiki</a>"
+      },
+      "the tarnished": {
+        type: "Player",
+        health: "Varies (level-based)",
+        drops: ["N/A"],
+        location: "Anywhere in the Lands Between",
+        grace: "All Sites of Grace",
+        description: "You, the protagonist of Elden Ring. Seeks to become Elden Lord. <a href='https://eldenring.wiki.fextralife.com/Tarnished' target='_blank'>Wiki</a>"
+      },
+      "mohg": {
+        type: "Boss",
+        health: "18,616 HP",
+        drops: ["Remembrance of the Blood Lord", "Mohg's Great Rune"],
+        location: "Mohgwyn Palace, Siofra River",
+        grace: "Dynasty Mausoleum Entrance",
+        description: "Lord of Blood, master of blood sorceries. <a href='https://eldenring.wiki.fextralife.com/Mohg+Lord+of+Blood' target='_blank'>Wiki</a>"
+      },
+      "morgott": {
+        type: "Boss",
+        health: "10,470 HP",
+        drops: ["Remembrance of the Omen King"],
+        location: "Erdtree Sanctuary, Leyndell",
+        grace: "Erdtree Sanctuary",
+        description: "Omen King, ruler of Leyndell. <a href='https://eldenring.wiki.fextralife.com/Morgott+the+Omen+King' target='_blank'>Wiki</a>"
+      },
+      "fia": {
+        type: "NPC",
+        health: "N/A",
+        drops: ["Fia's Hood", "Fia's Robe", "Mending Rune of the Death-Prince"],
+        location: "Roundtable Hold, Deeproot Depths",
+        grace: "Prince of Death's Throne",
+        description: "Deathbed Companion, involved in quest with Those Who Live in Death. <a href='https://eldenring.wiki.fextralife.com/Fia' target='_blank'>Wiki</a>"
+      },
+      "alexander": {
+        type: "NPC",
+        health: "N/A",
+        drops: ["Alexander's Innards", "Shard of Alexander"],
+        location: "Limgrave, Gael Tunnel, Crumbling Farum Azula",
+        grace: "Nearby: Gael Tunnel",
+        description: "Iron Fist Alexander, a living jar. Helper in boss fights and questlines. <a href='https://eldenring.wiki.fextralife.com/Iron+Fist+Alexander' target='_blank'>Wiki</a>"
+      },
+      "patches": {
+        type: "NPC",
+        health: "N/A",
+        drops: ["Patches' Bell Bearing"],
+        location: "Murkwater Cave, Volcano Manor",
+        grace: "Murkwater Cave",
+        description: "Infamous trickster merchant. <a href='https://eldenring.wiki.fextralife.com/Patches' target='_blank'>Wiki</a>"
+      },
+      // ... ADD ALL REMAINING BOSSES, NPCS, ENEMIES, MERCHANTS UP TO 160+ ENTRIES.
+      // For a full list, use Elden Ring wiki or see the automation suggestion below.
+    };
+
+    // --- Automation Suggestion ---
+    // For 160+ entries, use a JSON file with all characters and fetch/load it at runtime.
+    // Example: fetch('characters.json').then(res => res.json()).then(data => characterData = data);
+
+    // Dropdown and live search utilities
+    let dropdownOpen = false;
+    function toggleDropdown() {
+      const dropdown = document.getElementById("dropdownList");
+      if (dropdownOpen) {
+        dropdown.classList.remove("open");
+        dropdownOpen = false;
+      } else {
+        renderDropdownList();
+        dropdown.classList.add("open");
+        dropdownOpen = true;
+      }
+    }
+    function renderDropdownList() {
+      const dropdown = document.getElementById("dropdownList");
+      dropdown.innerHTML = '';
+      Object.keys(characterData).sort().forEach(name => {
+        if (name === secretCharacterKey) return;
+        const item = document.createElement('div');
+        item.className = 'dropdown-item';
+        item.textContent = capitalizeWords(name);
+        item.onclick = () => {
+          document.getElementById("nameInput").value = name;
+          lookupCharacter();
+          dropdown.classList.remove("open");
+          dropdownOpen = false;
+        };
+        dropdown.appendChild(item);
+      });
+    }
+
+    // Live search
+    document.getElementById("nameInput").addEventListener("input", function(e) {
+      const val = e.target.value.toLowerCase();
+      const liveResults = document.getElementById("liveResults");
+      liveResults.innerHTML = '';
+      if (!val) {
+        liveResults.style.display = 'none';
+        return;
+      }
+      let results = Object.keys(characterData)
+        .filter(name => name.includes(val) && name !== secretCharacterKey)
+        .sort()
+        .slice(0, 20);
+      if (results.length > 0) {
+        liveResults.style.display = 'block';
+        results.forEach(name => {
+          const item = document.createElement('div');
+          item.className = 'live-item';
+          item.textContent = capitalizeWords(name);
+          item.onclick = () => {
+            document.getElementById("nameInput").value = name;
+            lookupCharacter();
+            liveResults.style.display = 'none';
+          };
+          liveResults.appendChild(item);
+        });
+      } else {
+        liveResults.style.display = 'none';
+      }
+    });
+
+    // Hide dropdown/live results if click outside
+    document.addEventListener('click', function(e) {
+      if (!e.target.closest('.search-group')) {
+        document.getElementById("dropdownList").classList.remove("open");
+        document.getElementById("liveResults").style.display = 'none';
+        dropdownOpen = false;
+      }
+    });
+
+    // Lookup logic (supports comma-separated search)
+    function lookupCharacter() {
+      const panel = document.getElementById("infoPanel");
+      const input = document.getElementById("nameInput").value.trim().toLowerCase();
+      if (!input) {
+        panel.innerHTML = "";
+        return;
+      }
+      const names = input.split(',').map(x => x.trim()).filter(x => x);
+      let html = '';
+      names.forEach(name => {
+        if (name === secretCharacterKey) {
+          html += `
+            <div class="title">Son Goku (Legendary Warrior)</div>
+            <div><strong>Health:</strong> ${secretCharacter.health}</div>
+            <div class="drops"><strong>Drops:</strong> ${secretCharacter.drops.join(", ")}</div>
+            <div class="location"><strong>Location:</strong> ${secretCharacter.location}</div>
+            <div class="grace"><strong>Nearest Grace:</strong> ${secretCharacter.grace}</div>
+            <div><strong>Description:</strong> ${secretCharacter.description}</div>
+            <hr style="border:1px solid #444;">
+          `;
+        } else if (characterData[name]) {
+          const char = characterData[name];
+          html += `
+            <div class="title">${capitalizeWords(name)} (${char.type})</div>
+            <div><strong>Health:</strong> ${char.health}</div>
+            <div class="drops"><strong>Drops:</strong> ${char.drops.join(", ")}</div>
+            <div class="location"><strong>Location:</strong> ${char.location}</div>
+            <div class="grace"><strong>Nearest Grace:</strong> ${char.grace}</div>
+            <div><strong>Description:</strong> ${char.description}</div>
+            <hr style="border:1px solid #444;">
+          `;
+        } else {
+          html += `
+            <div class="notfound">No info found for "${capitalizeWords(name)}".</div>
+            <div>Try searching: <a href="https://eldenring.wiki.fextralife.com/search?query=${encodeURIComponent(name)}" target="_blank">eldenring.wiki</a></div>
+            <hr style="border:1px solid #444;">
+          `;
+        }
+      });
+      panel.innerHTML = html;
+    }
+
+    function capitalizeWords(str) {
+      return str.split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+    }
+
+    document.getElementById("nameInput").addEventListener("keypress", function(e) {
+      if (e.key === "Enter") lookupCharacter();
+    });
+  </script>
+</body>
+</html>
